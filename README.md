@@ -4,7 +4,7 @@ Workout is a work processing library for [Go](http://golang.org) built on top of
 
 ## Example
 
-`
+```go
 package main
 
 import (
@@ -64,7 +64,7 @@ func main() {
 func doNothing(job *workout.Job) (err error) {
   return nil
 }
-`
+```
 
 ## License
 
