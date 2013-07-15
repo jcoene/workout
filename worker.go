@@ -21,6 +21,11 @@ func NewWorker(m *Master, wid int) (w *Worker) {
 	w.master = m
 	w.id = wid
 	w.client, err = NewClient(m.url, m.tubes)
+
+	if m.ReserveTimeout > time.Duration(0) {
+		w.client.ReserveTimeout = m.ReserveTimeout
+	}
+
 	if err != nil {
 		log.Warn("worker %d: client error: %s", wid, err)
 	}

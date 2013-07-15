@@ -2,20 +2,22 @@ package workout
 
 import (
 	"sync"
+	"time"
 )
 
 type JobHandler func(*Job) error
 
 type Master struct {
-	concurrency int
-	url         string
-	tubes       []string
-	workers     []*Worker
-	handlers    map[string]JobHandler
-	job         chan *Job
-	quit        chan bool
-	mg          sync.WaitGroup
-	wg          sync.WaitGroup
+	ReserveTimeout time.Duration
+	concurrency    int
+	url            string
+	tubes          []string
+	workers        []*Worker
+	handlers       map[string]JobHandler
+	job            chan *Job
+	quit           chan bool
+	mg             sync.WaitGroup
+	wg             sync.WaitGroup
 }
 
 func NewMaster(url string, tubes []string, concurrency int) *Master {
