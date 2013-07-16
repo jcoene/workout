@@ -7,12 +7,9 @@ import (
 )
 
 type Worker struct {
-	client       *Client
-	master       *Master
-	id           int
-	stat_attempt uint64
-	stat_success uint64
-	stat_failure uint64
+	client *Client
+	master *Master
+	id     int
 }
 
 var (
@@ -63,16 +60,19 @@ func (w *Worker) run() {
 
 		log.Trace("worker %d: got job %d", w.id, job.Id)
 
-		atomic.AddUint64(&w.stat_attempt, 1)
+		atomic.AddInt32(&w.master.stat_active, 1)
+		atomic.AddUint64(&w.master.stat_attempt, 1)
 		err = w.process(job)
 
 		if err != nil {
-			atomic.AddUint64(&w.stat_failure, 1)
+			atomic.AddUint64(&w.master.stat_failure, 1)
 			w.client.Release(job, err)
 		} else {
-			atomic.AddUint64(&w.stat_success, 1)
+			atomic.AddUint64(&w.master.stat_success, 1)
 			w.client.Delete(job)
 		}
+		atomic.AddInt32(&w.master.stat_active, -1)
+
 	}
 }
 

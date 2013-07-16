@@ -2,12 +2,19 @@ package workout
 
 import (
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
 type JobHandler func(*Job) error
 type JobCallback func(*Job, error, time.Duration)
 
+type Stats struct {
+	stat_active  int32
+	stat_attempt uint64
+	stat_success uint64
+	stat_failure uint64
+}
 
 type Master struct {
 	ReserveTimeout time.Duration
@@ -20,8 +27,21 @@ type Master struct {
 	timeouts       map[string]time.Duration
 	job            chan *Job
 	quit           chan bool
+	stat_active    int32
+	stat_attempt   uint64
+	stat_success   uint64
+	stat_failure   uint64
 	mg             sync.WaitGroup
 	wg             sync.WaitGroup
+}
+
+func (m *Master) Stats() (s *Stats) {
+	s = new(Stats)
+	s.stat_active = atomic.LoadInt32(&m.stat_active)
+	s.stat_attempt = atomic.LoadUint64(&m.stat_attempt)
+	s.stat_success = atomic.LoadUint64(&m.stat_success)
+	s.stat_failure = atomic.LoadUint64(&m.stat_failure)
+	return
 }
 
 func NewMaster(url string, tubes []string, concurrency int) *Master {
