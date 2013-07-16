@@ -1,6 +1,7 @@
 package workout
 
 import (
+	"errors"
 	"sync/atomic"
 	"time"
 )
@@ -13,6 +14,10 @@ type Worker struct {
 	stat_success uint64
 	stat_failure uint64
 }
+
+var (
+	ErrJobTimeout = errors.New("job timed out")
+)
 
 func NewWorker(m *Master, wid int) (w *Worker) {
 	var err error
@@ -56,20 +61,15 @@ func (w *Worker) run() {
 			continue
 		}
 
-		t0 := time.Now()
-
 		log.Trace("worker %d: got job %d", w.id, job.Id)
 
 		atomic.AddUint64(&w.stat_attempt, 1)
 		err = w.process(job)
-		dur := time.Now().Sub(t0)
 
 		if err != nil {
-			log.Info("job %s failed in %v: %s, next attempt in %v", job.Describe(), dur, err, job.NextDelay())
 			atomic.AddUint64(&w.stat_failure, 1)
 			w.client.Release(job, err)
 		} else {
-			log.Info("job %s succeeded in %v", job.Describe(), dur)
 			atomic.AddUint64(&w.stat_success, 1)
 			w.client.Delete(job)
 		}
@@ -77,10 +77,35 @@ func (w *Worker) run() {
 }
 
 func (w *Worker) process(job *Job) (err error) {
-	fn, ok := w.master.handlers[job.Tube]
+	t0 := time.Now()
+
+	hfn, ok := w.master.handlers[job.Tube]
 	if !ok {
 		return Error("no handler registered")
 	}
 
-	return fn(job)
+	to, ok := w.master.timeouts[job.Tube]
+	if !ok {
+		to = time.Duration(12) * time.Hour
+	}
+
+	ch := make(chan error)
+
+	go func(fn JobHandler, j *Job) {
+		ch <- fn(j)
+	}(hfn, job)
+
+	select {
+	case err = <-ch:
+	case <-time.After(to):
+		err = ErrJobTimeout
+	}
+
+	dur := time.Now().Sub(t0)
+
+	if cfn, ok := w.master.callbacks[job.Tube]; ok {
+		cfn(job, err, dur)
+	}
+
+	return
 }

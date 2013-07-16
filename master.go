@@ -6,6 +6,8 @@ import (
 )
 
 type JobHandler func(*Job) error
+type JobCallback func(*Job, error, time.Duration)
+
 
 type Master struct {
 	ReserveTimeout time.Duration
@@ -13,7 +15,9 @@ type Master struct {
 	url            string
 	tubes          []string
 	workers        []*Worker
+	callbacks      map[string]JobCallback
 	handlers       map[string]JobHandler
+	timeouts       map[string]time.Duration
 	job            chan *Job
 	quit           chan bool
 	mg             sync.WaitGroup
@@ -25,12 +29,16 @@ func NewMaster(url string, tubes []string, concurrency int) *Master {
 		url:         url,
 		tubes:       tubes,
 		concurrency: concurrency,
+		callbacks:   make(map[string]JobCallback),
 		handlers:    make(map[string]JobHandler),
+		timeouts:    make(map[string]time.Duration),
 	}
 }
 
-func (m *Master) RegisterHandler(name string, fn JobHandler) {
-	m.handlers[name] = fn
+func (m *Master) RegisterHandler(name string, hfn JobHandler, cfn JobCallback, to time.Duration) {
+	m.handlers[name] = hfn
+	m.callbacks[name] = cfn
+	m.timeouts[name] = to
 	return
 }
 
