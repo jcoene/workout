@@ -13,7 +13,11 @@ func main() {
 	tubes := []string{"default", "person", "address"}
 
 	// Create a new workout client for job insertion
-	wc, _ := workout.NewClient("localhost:11300", tubes)
+	wc, err := workout.NewClient("localhost:11300", tubes)
+	if err != nil {
+		fmt.Printf("unable to connect to beanstalkd: %s\n", err)
+		os.Exit(1)
+	}
 
 	// Insert 1000 jobs for each tube
 	for i := 0; i < 1000; i++ {
@@ -31,9 +35,9 @@ func main() {
 	// Setup a workout master with 20 workers
 	wm := workout.NewMaster("localhost:11300", tubes, 20)
 
-	// Assign our doNothing handler to each tube
+	// Assign a job handler, callback handler and duration (after which the handler is abandoned and we return an error) for each job.
 	for _, t := range tubes {
-		wm.RegisterHandler(t, doNothing)
+		wm.RegisterHandler(t, jobHandler, jobCallback, 60*time.Second)
 	}
 
 	// Start processing!
@@ -54,6 +58,17 @@ func main() {
 }
 
 // A handler function takes a job pointer and returns an error (or nil on success)
-func doNothing(job *workout.Job) (err error) {
+func jobHandler(job *workout.Job) (err error) {
+	// we don't actually have any work to do
 	return nil
+}
+
+// A callback function takes a job, error and duration - useful for reporting
+func jobCallback(job *workout.Job, err error, dur time.Duration) {
+	if err != nil {
+		fmt.Printf("job %d encountered an error: %s (took %v)\n", job.Id, err, dur)
+	} else {
+		fmt.Printf("job %d succeeded (took %v)\n", job.Id, dur)
+	}
+	return
 }
