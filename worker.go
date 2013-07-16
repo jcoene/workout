@@ -103,7 +103,8 @@ func (w *Worker) process(job *Job) (err error) {
 
 	dur := time.Now().Sub(t0)
 
-	if cfn, ok := w.master.callbacks[job.Tube]; ok {
+	cfn, ok := w.master.callbacks[job.Tube]
+	if ok && cfn != nil {
 		cfn(job, err, dur)
 	}
 
