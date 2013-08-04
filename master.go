@@ -74,7 +74,12 @@ func (m *Master) Start() (err error) {
 	log.Info("master: starting %d workers...", m.concurrency)
 
 	for i := 0; i < m.concurrency; i++ {
-		m.workers[i] = NewWorker(m, i)
+		if m.workers[i], err = NewWorker(m, i); err != nil {
+			return Error("unable to start worker: %s", err)
+		}
+	}
+
+	for i := 0; i < m.concurrency; i++ {
 		go m.workers[i].run()
 	}
 
