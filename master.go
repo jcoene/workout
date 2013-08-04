@@ -44,10 +44,10 @@ func (m *Master) Stats() (s *Stats) {
 	return
 }
 
-func NewMaster(url string, tubes []string, concurrency int) *Master {
+func NewMaster(url string, concurrency int) *Master {
 	return &Master{
 		url:         url,
-		tubes:       tubes,
+		tubes:       make([]string, 0),
 		concurrency: concurrency,
 		callbacks:   make(map[string]JobCallback),
 		handlers:    make(map[string]JobHandler),
@@ -56,6 +56,7 @@ func NewMaster(url string, tubes []string, concurrency int) *Master {
 }
 
 func (m *Master) RegisterHandler(name string, hfn JobHandler, cfn JobCallback, to time.Duration) {
+	m.tubes = append(m.tubes, name)
 	m.handlers[name] = hfn
 	m.callbacks[name] = cfn
 	m.timeouts[name] = to

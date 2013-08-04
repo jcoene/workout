@@ -42,7 +42,7 @@ func main() {
   }
 
   // Setup a workout master with 20 workers
-  wm := workout.NewMaster("localhost:11300", tubes, 20)
+  wm := workout.NewMaster("localhost:11300", 20)
 
   // Assign a job handler, callback handler and duration (after which the handler is abandoned and we return an error) for each job.
   for _, t := range tubes {
