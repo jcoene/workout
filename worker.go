@@ -2,6 +2,7 @@ package workout
 
 import (
 	"errors"
+	"fmt"
 	"sync/atomic"
 	"time"
 )
@@ -15,6 +16,12 @@ type Worker struct {
 var (
 	ErrJobTimeout = errors.New("job timed out")
 )
+
+type JobPanic struct {
+	Value interface{}
+}
+
+func (j JobPanic) Error() string { return fmt.Sprintf("%v", j.Value) }
 
 func NewWorker(m *Master, wid int) (w *Worker, err error) {
 	w = new(Worker)
@@ -74,6 +81,12 @@ func (w *Worker) run() {
 }
 
 func (w *Worker) process(job *Job) (err error) {
+	defer func() {
+		if recovered := recover(); recovered != nil {
+			err = JobPanic{Value: recovered}
+		}
+	}()
+
 	t0 := time.Now()
 
 	hfn, ok := w.master.handlers[job.Tube]
